@@ -1,11 +1,17 @@
 #!/bin/bash
 set -x
+
+
+modprobe -r vfio-pci 
+modprobe -r vfio_iommu_type1
+modprobe -r vfio
   
 # Re-Bind GPU to Nvidia Driver
 virsh nodedev-reattach pci_0000_01_00_1 #Replace id with your gpu id number. Use lspci -nnk.
 virsh nodedev-reattach pci_0000_01_00_0 #This too
 
 # Reload nvidia modules
+modprobe snd_hda_intel
 modprobe nvidia
 modprobe nvidia_modeset
 modprobe nvidia_uvm
