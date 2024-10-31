@@ -113,6 +113,12 @@ set -x
 
 # Stop display manager
 systemctl stop display-manager.service
+systemctl stop sddm.service
+pulse_pid=$(pgrep -u igneel pulseaudio)
+pipewire_pid=$(pgrep -u igneel pipewire-media)
+kill $pulse_pid
+kill $pipewire_pid
+
 ## Uncomment the following line if you use GDM
 #killall gdm-x-session
 
@@ -126,12 +132,22 @@ echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind
 # Avoid a Race condition by waiting 2 seconds. This can be calibrated to be shorter or longer if required for your system
 sleep 2
 
+modprobe -r nvidia-drm
+modprobe -r nvidia-uvm
+modprobe -r snd_hda_intel
+modprobe -r i2c_nvidia_gpu
+modprobe -r nvidia
+
+sleep 2
+
 # Unbind the GPU from display driver
 virsh nodedev-detach pci_0000_01_00_0  #Replace numbers with your specific pci id. Use lspci -nnk
 virsh nodedev-detach pci_0000_01_00_1  # This one too
 
 # Load VFIO Kernel Module  
 modprobe vfio-pci  
+modprobe vfio
+modprobe vfio_iommu_type1
 ```
 NOTE: Gnome/GDM users. You have to uncommment the line ````killall gdm-x-session```` in order for the script to work properly. Killing GDM does not destroy all users sessions like other display managers do. 
 
@@ -141,12 +157,18 @@ My stop script is ```/etc/libvirt/hooks/qemu.d/{VMName}/release/end/revert.sh```
 ```
 #!/bin/bash
 set -x
+
+
+modprobe -r vfio-pci 
+modprobe -r vfio_iommu_type1
+modprobe -r vfio
   
 # Re-Bind GPU to Nvidia Driver
 virsh nodedev-reattach pci_0000_01_00_1 #Replace id with your gpu id number. Use lspci -nnk.
 virsh nodedev-reattach pci_0000_01_00_0 #This too
 
 # Reload nvidia modules
+modprobe snd_hda_intel
 modprobe nvidia
 modprobe nvidia_modeset
 modprobe nvidia_uvm
